@@ -1,6 +1,7 @@
-#include "wrist_states.h"
+
 #include "pixel.h"
 #include "animations.h"
+#include "data_layout.h"
 
 // All animation functions have three functions:
 // 	Initialization - Sets variables
@@ -31,411 +32,193 @@ void blankLEDs(void) {
 }
 
 // **********************************************
-// * Turns the Bowtie completely off
+// * Turns the Display completely off
 // **********************************************
-void init_TieOff(uint8_t cfg) {
+void init_DispOff(uint8_t cfg) {
 	mode_steps = 1;	
 	ms = 0;
 	mode_cfg = cfg;
 }
 
-void anim_TieOff(uint8_t step) {
+void anim_DispOff(uint8_t step) {
 	if (step == 0) {
 		blankLEDs();
 	}
 }
 
-bool switch_TieOff(uint8_t step) {
+bool switch_DispOff(uint8_t step) {
 	return true;
 }
 
-// **********************************************
-// * Performs the outline animation
-// * Configurable based on the integer passed in
-// **********************************************
-void init_Outline(uint8_t cfg) {
-	mode_cfg = cfg;
-	mode_steps = PG_EDGE_SIZE;
-	ms = FPS(50);
-	// Set the default palette	
-}
-
-void anim_Outline(uint8_t step) {
-	uint8_t last_step = 0;
-	uint8_t px;
-
-	// This is the always on mode
-	if (mode_cfg == 255) {
-  		for(uint8_t i = 0; i<PG_EDGE_SIZE; i++) {
-			px = PG(PG_EDGE, i);
-			setPixel(px, palette_step, 255);
-		}
-		palette_step++;
-		return;
-	} 
-
-	// Get the previous step
-	if (step == 0)
-		last_step = mode_steps;
-	else
-		last_step = step - 1;
-
-	// Turn off last LEDs
-	blankLEDs();
-
-	// Turn on current LEDs
-	px = PG(PG_EDGE, step);
-	setPixel(px, palette_step, 255);
-
-	// Turn on the 4x LEDs
-	if (mode_cfg == 4) {
-		if (step < 11) {
-			px = PG(PG_EDGE, step + 33);
-			setPixel(px, palette_step, 255);
-		} else {
-			px = PG(PG_EDGE, step - 11);
-			setPixel(px, palette_step, 255);
-		}
-
-		if (step < 33) {
-			px = PG(PG_EDGE, step + 11);
-			setPixel(px, palette_step, 255);
-		} else {
-			px = PG(PG_EDGE, step - 33);
-			setPixel(px, palette_step, 255);
-		}
-	}
-	
-	// Turn on the 2x LEDs
-	if ((mode_cfg == 2) || (mode_cfg == 4)) {
-		if (step < 22) {
-			px = PG(PG_EDGE, step + 22);
-			setPixel(px, palette_step, 255);
-		} else {
-			px = PG(PG_EDGE, step - 22);
-			setPixel(px, palette_step, 255);
-		}
-	}
-
-	// Increment through the palette
-	palette_step++;
-	return;
-}
-
-bool switch_Outline(uint8_t step) {
-	// We return true when we're at step 0 or we're in always on mode
-	if ((step == 0) || (mode_cfg == 255))
-		return true;
-	return false;
-}
 
 // **********************************************
-// * "Night Rider" Animation
+// * "PaletteFade" Animation
 // **********************************************
-void init_Nightrider(uint8_t cfg) {
-	mode_steps = 80;
-	ms = FPS(50);
-	cfg = 0;
-}
-
-void anim_Nightrider(uint8_t step) {
-	const uint8_t idxs[15] = {4,13,22,30,36,40,43,46,49,52,56,62,70,79,88};
-	uint8_t idx = 0;
-	uint8_t last;
-
-	if (step < 15) {
-		// Clear the matrix
-		blankLEDs();
-  
-		// Right to left
-		setPixel(idxs[step], palette_step, 255);
-		setPixel(idxs[step] - 1, palette_step, 255);
-		setPixel(idxs[step] + 1, palette_step, 255);
-    palette_step++;
-	}
-
-	// We wait for 25 steps
-  	if ((step >= 15) && (step < 40)) {
-		// Do nothing...
-		;;
-	}
-
-	// Increment the color
-	if (step == 40)
-		palette_step++;
-
-	// Go back
-	if ((step >= 40) && (step < 55)) {
-		// Clear the matrix
-		blankLEDs();
-
-		// Left to Right
-		idx = 29 - (step - 25);
-		setPixel(idxs[idx], palette_step, 255);
-		setPixel(idxs[idx] - 1, palette_step, 255);
-		setPixel(idxs[idx] + 1, palette_step, 255);
-    palette_step++;
-	}
-
-	// We wait for 25 steps
-	if (step >= 55) {
-		// Do nothing...
-	}
-
-	// Increment the color
-	if (step == 79)
-		palette_step++;
-}
-
-bool switch_Nightrider(uint8_t step) {
-	if (step == 0)
-		return true;
-	return false;
-}
-
-// **********************************************
-// * "Pinwheel" Dots Animation
-// **********************************************
-void init_Pinwheel(int cfg) {
-	mode_cfg = cfg;
-	mode_steps = 32;
-	ms = FPS(4);
-}
-
-uint8_t pw_Center = 0;
-uint8_t pw_Color = 0;
-uint8_t pw_Edges[4];
-uint8_t pw_Quads[4];
-void anim_Pinwheel(uint8_t step) {
-	// Select a new pinwheel
-	if (step == 0) {
-		blankLEDs();
-
-		pw_Center = PG(PG_ONE_NEIGHBOR, random(0, PG_ONE_NEIGHBOR_SIZE));
-		pw_Color = random(0, 255);
-
-		uint8_t row, col;
-		P2C(pw_Center, &row, &col);
-
-		pw_Edges[0] = C2P(row - 1, col);
-		pw_Edges[1] = C2P(row + 1, col);
-		pw_Edges[2] = C2P(row, col - 1);
-		pw_Edges[3] = C2P(row, col + 1);
-
-		pw_Quads[0] = C2P(row - 1, col - 1);
-		pw_Quads[1] = C2P(row - 1, col + 1);
-		pw_Quads[2] = C2P(row + 1, col - 1);
-		pw_Quads[3] = C2P(row + 1, col + 1);
-	}
-
-	setPixel(pw_Center, pw_Color, 255);
-	if (step % 2) {
-		for (uint8_t i=0; i<4; i++) {
-			leds[pw_Quads[i]] = CRGB::Black;
-			setPixel(pw_Edges[i], pw_Color + 128, 128);
-		}
-	} else {
-		for (uint8_t i=0; i<4; i++) {
-			setPixel(pw_Quads[i], pw_Color + 128, 128);
-			leds[pw_Edges[i]] = CRGB::Black;
-		}
-	}
-}
-
-void switch_Pinwheel(uint8_t step) {
-	if (step == 0)
-		return true;
-	return false;
-}
-
-// **********************************************
-// * "Whiskers" Animation
-// **********************************************
-void init_Whiskers(int cfg) {
-}
-
-void anim_Whiskers(uint8_t step) {
-}
-
-void switch_Whiskers(uint8_t step) {
-	if (step == 0)
-		return true;
-	return false;
-}
-
-// **********************************************
-// * "Matrix" Animation
-// **********************************************
-
-// 8 simultaneous streaks
-uint8_t matrix_vals[8];
-
-void init_Matrix(int cfg) {
-	uint8_t r, c, px;
-
-	mode_cfg = cfg;
-	mode_steps = 255;
-	ms = FPS(10);
-
-	// Set up the matrix
-	for (uint8_t i=0; i<8; i++) {
-		// Pick a random pixel
-		uint8_t px = random(0, PIXEL_CT);
-		P2C(px, &r, &c);
-		matrix_vals[i] = (r << 4) | c;
-	}
-}
-
-void anim_Matrix(uint8_t step) {
-	uint8_t px, r, c;
-	// Clear the screen
-	blankLEDs();
-
-	for (uint8_t i=0; i<8; i++) {
-		r = (matrix_vals[i] >> 4);
-		c = (matrix_vals[i] & 0xF);
-		r++;
-
-		// Get a new pixel if we went off
-		if (r >= NUM_ROW + 2) {
-			px = random(0, PIXEL_CT);
-			P2C(px, &r, &c);
-		}
-
-		px = C2P(r, c);
-		if (px != 255)
-			setPixel(px, palette_step, 255);
-
-		px = C2P(r - 1, c);
-		if (px != 255)
-			setPixel(px, palette_step, 128);
-		
-		px = C2P(r - 2, c);
-		if (px != 255)
-			setPixel(px, palette_step, 64);
-
-		// Set the row and column values back
-		matrix_vals[i] = (r << 4) | c;
-	}
-	palette_step++;
-}
-
-void switch_Matrix(uint8_t step) {
-	return true;
-}
-
-// **********************************************
-// * "Rainbow" Animation
-// **********************************************
-void init_Rainbow(int cfg) {
+void init_PaletteFade(int cfg) {
 	mode_cfg = cfg;
 	mode_steps = 255;
 	ms = 0;
 }
 
-void anim_Rainbow(uint8_t step) {
+void anim_PaletteFade(uint8_t step) {
 	for (uint8_t i=0; i<PIXEL_CT; i++) {
 		// Half brightness
-		setPixel(i, step + i, 128);
+		setPixel(i, step + i, 255);
 	}
 }
 
-void switch_Rainbow(uint8_t step) {
+bool switch_PaletteFade(uint8_t step) {
 	return true;
 }
 
-
 // **********************************************
-// * Play an Animation from BowtieEd
+// * "Sweep Down" Animation
 // **********************************************
-const uint8_t BT_Animations[3][256] PROGMEM = {
-	{
-		0x4, 0x2, 0x0,
-		0xb, 0x0, 0x44, 0x0, 0x5f, 0x0, 0x6a, 0x0, 
-		0x1c, 0x2, 0xc0, 0x3, 0xc0, 0x4, 0xc0, 0x5, 0xc0, 0x6, 0xc0, 0xe, 0xc0, 0x16, 0xc0, 0x1f, 0xc0, 0x22, 0xc0, 0x23, 0xc0, 0x24, 0xc0, 0x25, 0xc0, 0x26, 0xc0, 0x2b, 0xc0, 0x2d, 0xc0, 0x2e, 0xc0, 0x2f, 0xc0, 0x31, 0xc0, 0x36, 0xc0, 0x37, 0xc0, 0x38, 0xc0, 0x39, 0xc0, 0x3a, 0xc0, 0x3e, 0xc0, 0x45, 0xc0, 0x47, 0xc0, 0x4d, 0xc0, 0x51, 0xc0,
-		0xd, 0x2, 0xc0, 0x3, 0xc0, 0x4, 0xc0, 0x5, 0xc0, 0x6, 0xc0, 0xe, 0xc0, 0x16, 0xc0, 0x1f, 0xc0, 0x22, 0xc0, 0x23, 0xc0, 0x24, 0xc0, 0x25, 0xc0, 0x26, 0xc0,
-		0x5, 0x2b, 0xc0, 0x2d, 0xc0, 0x2e, 0xc0, 0x2f, 0xc0, 0x31, 0xc0,
-		0xa, 0x36, 0xc0, 0x37, 0xc0, 0x38, 0xc0, 0x39, 0xc0, 0x3a, 0xc0, 0x3e, 0xc0, 0x45, 0xc0, 0x47, 0xc0, 0x4d, 0xc0, 0x51, 0xc0
-	},
-	{
-		0x8, 0x5, 0x0,
-		0x13, 0x0, 0x18, 0x0, 0x25, 0x0, 0x3a, 0x0, 0x57, 0x0, 0x7c, 0x0, 0xa1, 0x0, 0xc6, 0x0, 
-		0x2, 0x4, 0x0, 0x58, 0x0,
-		0x6, 0x3, 0x0, 0x5, 0x0, 0xd, 0x0, 0x4f, 0x0, 0x57, 0x0, 0x59, 0x0,
-		0xa, 0x2, 0x0, 0x6, 0x0, 0xc, 0x0, 0xe, 0x0, 0x16, 0x0, 0x46, 0x0, 0x4e, 0x0, 0x50, 0x0, 0x56, 0x0, 0x5a, 0x0,
-		0xe, 0x1, 0x0, 0x7, 0x0, 0xb, 0x0, 0xf, 0x0, 0x15, 0x0, 0x17, 0x0, 0x1e, 0x0, 0x3e, 0x0, 0x45, 0x0, 0x47, 0x0, 0x4d, 0x0, 0x51, 0x0, 0x55, 0x0, 0x5b, 0x0,
-		0x12, 0x0, 0x0, 0x8, 0x0, 0xa, 0x0, 0x10, 0x0, 0x14, 0x0, 0x18, 0x0, 0x1d, 0x0, 0x1f, 0x0, 0x24, 0x0, 0x38, 0x0, 0x3d, 0x0, 0x3f, 0x0, 0x44, 0x0, 0x48, 0x0, 0x4c, 0x0, 0x52, 0x0, 0x54, 0x0, 0x5c, 0x0,
-		0x12, 0x9, 0x0, 0x11, 0x0, 0x13, 0x0, 0x19, 0x0, 0x1c, 0x0, 0x20, 0x0, 0x23, 0x0, 0x25, 0x0, 0x28, 0x0, 0x34, 0x0, 0x37, 0x0, 0x39, 0x0, 0x3c, 0x0, 0x40, 0x0, 0x43, 0x0, 0x49, 0x0, 0x4b, 0x0, 0x53, 0x0,
-		0x12, 0x12, 0x0, 0x1a, 0x0, 0x1b, 0x0, 0x21, 0x0, 0x22, 0x0, 0x26, 0x0, 0x27, 0x0, 0x29, 0x0, 0x2b, 0x0, 0x31, 0x0, 0x33, 0x0, 0x35, 0x0, 0x36, 0x0, 0x3a, 0x0, 0x3b, 0x0, 0x41, 0x0, 0x42, 0x0, 0x4a, 0x0,
-		0x5, 0x2a, 0x0, 0x2c, 0x0, 0x2e, 0x0, 0x30, 0x0, 0x32, 0x0
-	},
-	{
-		0x2, 0x2, 0x0,
-		0x7, 0x0, 0x6a, 0x0, 
-		0x31, 0x0, 0x0, 0x1, 0x0, 0x4, 0x0, 0x5, 0x0, 0x8, 0x0, 0x9, 0x0, 0xc, 0x0, 0xd, 0x0, 0x10, 0x0, 0x11, 0x0, 0x14, 0x0, 0x15, 0x0, 0x18, 0x0, 0x19, 0x0, 0x1b, 0x0, 0x1c, 0x0, 0x1f, 0x0, 0x20, 0x0, 0x24, 0x0, 0x25, 0x0, 0x27, 0x0, 0x28, 0x0, 0x2a, 0x0, 0x2f, 0x0, 0x31, 0x0, 0x32, 0x0, 0x33, 0x0, 0x34, 0x0, 0x36, 0x0, 0x37, 0x0, 0x3a, 0x0, 0x3b, 0x0, 0x3c, 0x0, 0x3f, 0x0, 0x40, 0x0, 0x42, 0x0, 0x43, 0x0, 0x46, 0x0, 0x47, 0x0, 0x4a, 0x0, 0x4b, 0x0, 0x4e, 0x0, 0x4f, 0x0, 0x52, 0x0, 0x53, 0x0, 0x56, 0x0, 0x57, 0x0, 0x5a, 0x0, 0x5b, 0x0,
-		0x2c, 0x2, 0x0, 0x3, 0x0, 0x6, 0x0, 0x7, 0x0, 0xa, 0x0, 0xb, 0x0, 0xe, 0x0, 0xf, 0x0, 0x12, 0x0, 0x13, 0x0, 0x16, 0x0, 0x17, 0x0, 0x1a, 0x0, 0x1d, 0x0, 0x1e, 0x0, 0x21, 0x0, 0x22, 0x0, 0x23, 0x0, 0x26, 0x0, 0x29, 0x0, 0x2b, 0x0, 0x2c, 0x0, 0x2d, 0x0, 0x2e, 0x0, 0x30, 0x0, 0x35, 0x0, 0x38, 0x0, 0x39, 0x0, 0x3d, 0x0, 0x3e, 0x0, 0x41, 0x0, 0x44, 0x0, 0x45, 0x0, 0x48, 0x0, 0x49, 0x0, 0x4c, 0x0, 0x4d, 0x0, 0x50, 0x0, 0x51, 0x0, 0x54, 0x0, 0x55, 0x0, 0x58, 0x0, 0x59, 0x0, 0x5c, 0x0
-	},
-};
-
-void init_BTAnimation(uint8_t cfg) {
-	// The cfg indicates which animation to play
-	mode_cfg = cfg;
-
-	// Set the number of frames from the animation data
-	mode_steps = pgm_read_byte_near(BT_Animations[cfg]);
-
-	// Set the FPS from the animation data
-	ms = FPS(pgm_read_byte_near(BT_Animations[cfg] + 1));
-	
-	// Set the palette from the animation data
-	uint8_t pal = pgm_read_byte_near(BT_Animations[cfg] + 2);
+void init_SweepDown(int cfg) {
+  mode_cfg = cfg;
+  mode_steps = 10;
+  ms = FPS(4);
+  blankLEDs();
 }
 
-void anim_BTAnimation(uint8_t step) {
-   LoadFrame(step, BT_Animations[mode_cfg], palette_step);
+void anim_SweepDown(uint8_t step) {
+  if (mode_cfg==0) {
+    blankLEDs();
+  }
+  for (uint8_t i=0; i<4; i++) {
+    setPixel(layout[step][i], palette_step, 255);  
+  }
+  palette_step += 20;
 }
 
-bool switch_BTAnimation(uint8_t step) {
-	return true;
+bool switch_SweepDown(uint8_t step) {
+  if (step == (mode_steps -1)) { 
+    return true;
+  } else {
+    return false;
+  }
+}
+
+// **********************************************
+// * "Sprial" Animation
+// **********************************************
+void init_Sprial(int cfg) {
+  mode_cfg = cfg;
+  mode_steps = NUM_LEDS;
+  ms = FPS(10);
+  blankLEDs();
+}
+
+void anim_Sprial(uint8_t step) {
+  const uint8_t pattern[NUM_LEDS] =  {39,29,19,9,8,7,6,5,4,3,2,1,0,10,20,30,31,32,33,34,35,36,37,38,28,18,17,16,15,14,13,12,11,21,22,23,24,25,26,27};
+  setPixel(pattern[step], palette_step, 255);  
+}
+
+bool switch_Sprial(uint8_t step) {
+  if (step != (mode_steps-1)) {
+    return false;
+  }
+  else
+  {
+    return true;
+  }
+}
+
+// **********************************************
+// * "Space Odd" Animation
+// **********************************************
+//CRGB leds[NUM_LEDS]; // current / transition
+//CRGB final_leds[NUM_LEDS]; // final
+void init_SpaceOdd(int cfg) {
+  mode_cfg = cfg;
+  mode_steps = 255;
+  ms = 0;
+  blankLEDs();
+}
+
+void anim_SpaceOdd(uint8_t step) {  
+  // pick random color per pixel
+  // fade from current state to new color (all at once)
+  if (step == 0) {
+    for (uint8_t ir = 0; ir < NUM_LEDS; ir++)
+    {
+      // pick random color per led
+      // rand 0-255 palette_step
+      palette_step = random(0, 255);
+      setPixelFinal(ir, palette_step, 255);
+    }
+  } // step=0
+
+  for (uint8_t i = 0; i < NUM_LEDS; i++)
+  {
+    // update each pixel (per step)
+
+    if (final_leds[i].red > leds[i].red){
+      leds[i].red += 1;
+    }
+    else if (final_leds[i].red < leds[i].red){
+      leds[i].red -= 1;
+    } 
+    // else values are equal
+
+    if (final_leds[i].green > leds[i].green){
+      leds[i].green += 1;
+    }
+    else if (final_leds[i].green < leds[i].green){
+      leds[i].green -= 1;
+    } 
+    // else values are equal
+
+    if (final_leds[i].blue > leds[i].blue){
+      leds[i].blue += 1;
+    }
+    else if (final_leds[i].blue < leds[i].blue){
+      leds[i].blue -= 1;
+    } 
+    // else values are equal
+  }
+  // TODO exit early
+  
+}
+
+bool switch_SpaceOdd(uint8_t step) {
+  if (mode_cfg> 10) {
+    return true;
+  }
+  else
+  {
+    return false;
+  }
 }
 
 // ****************************************************************************
 // Animation modes
 // ****************************************************************************
 typedef void (*Animation_Init_t)(uint8_t);
-Animation_Init_t Animation_Inits[8] = {
-	init_TieOff,
-	init_Outline,
-	init_Nightrider,
-	init_Whiskers,
-	init_Pinwheel,
-	init_Matrix,
-	init_BTAnimation,
-	init_Rainbow
+Animation_Init_t Animation_Inits[5] = {
+	init_DispOff,
+  init_PaletteFade,
+  init_SweepDown,
+  init_Sprial,
+  init_SpaceOdd
 };
 
 typedef void (*Animation_Func_t)(uint8_t);
-Animation_Func_t Animation_Funcs[8] = {
-	anim_TieOff,
-	anim_Outline,
-	anim_Nightrider,
-	anim_Whiskers,
-	anim_Pinwheel,
-	anim_Matrix,
-	anim_BTAnimation,
-	anim_Rainbow
+Animation_Func_t Animation_Funcs[5] = {
+	anim_DispOff,
+	anim_PaletteFade,
+  anim_SweepDown,
+  anim_Sprial,
+  anim_SpaceOdd
 };
 
 typedef bool (*Animation_Switch_t)(uint8_t);
-Animation_Switch_t Animation_Switches[8] = {
-	switch_TieOff,
-	switch_Outline,
-	switch_Nightrider,
-	switch_Whiskers,
-	switch_Pinwheel,
-	switch_Matrix,
-	switch_BTAnimation,
-	switch_Rainbow
+Animation_Switch_t Animation_Switches[5] = {
+	switch_DispOff,
+	switch_PaletteFade,
+  switch_SweepDown,
+  switch_Sprial,
+  switch_SpaceOdd
 };
 
 // ****************************************************************************
@@ -450,7 +233,8 @@ bool animAnimation(uint8_t anim, uint8_t step) {
 	(Animation_Funcs[anim])(step);
 
 	// Update the LEDs
-	FastLED.show();
+  copy_leds_2_disp_leds();
+	write_display();
 	
 	// Delay for the FPS
   if (mode_cfg == 255)
@@ -461,6 +245,83 @@ bool animAnimation(uint8_t anim, uint8_t step) {
 	return (step == (mode_steps - 1));
 }
 
-bool switchAnimation(uint8_t anim, uint8_t step) {
-	return (Animation_Switches[anim])(step);
+bool switchAnimation(uint8_t anim, uint8_t mode, uint8_t step) {
+  //Serial.println("");
+  //Serial.print("Animation: "); Serial.println(anim);
+  //Serial.print("Mode: "); Serial.println(mode);
+  //Serial.print("Step: "); Serial.println(step);
+  bool val = (Animation_Switches[mode])(step);
+  //Serial.print("Ret: "); 
+  //if (val) Serial.println("True"); else Serial.println("False");
+	return val;
 }
+
+void copy_leds_2_disp_leds() {
+  // TODO update to pointer
+  lp2_pixel pix;
+  uint8_t i;
+  pix.adr = 0; // color data addr
+  pix.dc = 0;
+  for (i = 0; i < NUM_LEDS; i++) {
+      pix.grn = 0;
+      pix.red = 0; 
+      pix.blu = 0;
+      // todo map leds[i].color (8-bit) to pixel.color (10-bit)
+      //map(value, fromLow, fromHigh, toLow, toHigh)
+      pix.grn = map(leds[i].green, 0, 255, 0, 1023);
+      pix.red = map(leds[i].red, 0, 255, 0, 1023);
+      pix.blu = map(leds[i].blue, 0, 255, 0, 1023);
+      disp_leds[i] = pix;
+  }
+  //Serial.println("END");
+}
+
+void write_display() {
+/*
+ * 0-0 [39] 1-2 [29] 2-4 [19] 3-6 [9]
+ * 0-1 [38] 1-3 [28] 2-5 [18] 3-7 [8]
+ * 0-2 [37] 1-4 [27] 2-6 [17] 4-0 [7]
+ * 0-3 [36] 1-5 [26] 2-7 [16] 4-1 [6]
+ * 0-4 [35] 1-6 [25] 3-0 [15] 4-2 [5]
+ * 0-5 [34] 1-7 [24] 3-1 [14] 4-3 [4]
+ * 0-6 [33] 2-0 [23] 3-2 [13] 4-4 [3]
+ * 0-7 [32] 2-1 [22] 3-3 [12] 4-5 [2]
+ * 1-0 [31] 2-2 [21] 3-3 [11] 4-6 [1]
+ * 1-1 [30] 2-3 [20] 3-5 [10] 4-7 [0] 
+ */
+//lp2_pixel disp_leds[NUM_LEDS];
+
+  lp2_pixel pixel;
+  uint8_t i, j;
+  uint32_t mask = 0x80000000;
+  for (j = 0; j < NUM_LEDS; j++) {
+    // pixel to write
+    pixel = disp_leds[j];
+    for(i = 0; i < 32; i++)
+    {
+      if((pixel.data)&mask)
+      {
+        // shift in a '1'
+        digitalWrite(DATA, HIGH);
+      }
+      else
+      {
+        // shift in a '0'
+        digitalWrite(DATA, LOW);
+      }
+    
+      // clock in DATA
+      digitalWrite(CLK, HIGH);
+      digitalWrite(CLK, LOW);
+
+
+      // shift the bits in copy
+      pixel.data = pixel.data << 1;
+    } // end for data shift
+  } // end for each pixel
+
+  /* LATCH */
+  digitalWrite(LATCH, HIGH);;
+  digitalWrite(LATCH, LOW);
+
+} // end write_display

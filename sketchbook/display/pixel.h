@@ -1,9 +1,7 @@
 #ifndef __PIXEL_H__
 #define __PIXEL_H__
 
-#define NUM_COL  	15
-#define NUM_ROW 	9
-#define PIXEL_CT	93
+#define PIXEL_CT	NUM_LEDS
 
 #define PG_ONE_NEIGHBOR_SIZE	37	
 #define PG_EDGE_SIZE	44

@@ -4,20 +4,39 @@
 void initAnimation(uint8_t anim, uint8_t cfg);
 bool animAnimation(uint8_t anim, uint8_t step);
 bool switchAnimation(uint8_t anim, uint8_t step);
+void write_display();
+void copy_leds_2_disp_leds();
 
-#define ANIM_TIE_OFF		   0  // mode 0, cfg x
-#define ANIM_OUTLINE2		   1  // mode 1, cfg 2
-#define ANIM_OUTLINE4		   2  // mode 1, cfg 4
-#define ANIM_OUTLINE_ON		   3  // mode 1, cfg 255
-#define ANIM_OUTLINE_ON_RB	   4  // mode 1, cfg 255
-#define ANIM_WHISKERS      	   5  // mode 3
-#define ANIM_PINWHEEL		   6  // mode 4
-#define ANIM_NIGHTRIDER	   	   7  // mode 2
-#define ANIM_NIGHTRIDER_RB 	   8 // mode 2
-#define ANIM_MATRIX		   9  // mode 5
-#define ANIM_RAINBOW		   10 // mode 7
-#define ANIM_MK			   11 // Mode 6, cfg 0
-#define ANIM_ARROWS		   12 // Mode 6, cfg 1
-#define ANIM_COUNT         	   13 // MAX ANIM COUNT
+#define ANIM_DISP_OFF  0 // mode 0, cfg x
+#define ANIM_DISP_RAINBOW 1 // mode 1, cfg x
+#define ANIM_DISP_FUSCIA 2 // mode 1, cfg x
+#define ANIM_DISP_SWEEP_DOWN 3 // mode 2, cfg 0
+#define ANIM_DISP_FADE_SWEEP_DOWN 4 // mode 2, cfg 1
+#define ANIM_DISP_SPRIAL 5 // mode 3, cfg x
+#define ANIM_DISP_SPACE_ODD 6 // mode 4
+#define ANIM_COUNT 7
+
+const uint8_t layout[10][4] = {
+  {39,29,19,9},
+  {38,28,18,8},
+  {37,27,17,7},
+  {36,26,16,6},
+  {35,25,15,5},
+  {34,24,14,4},
+  {33,23,13,3},
+  {32,22,12,2},
+  {31,21,11,1},
+  {30,20,10,0}
+};
+
+
+#define LATCH_DELAY_INNER 0
+#define LATCH_DELAY_AFTER 0
+
+#define CLK_DELAY_INNER 0
+#define CLK_DELAY_AFTER 0
+
+
+//#define ANIM_COUNT         	   13 // MAX ANIM COUNT
 
 #endif
