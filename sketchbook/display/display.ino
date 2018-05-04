@@ -51,12 +51,14 @@ lp2_pixel disp_leds[NUM_LEDS];
 
 /********************** Setup *********************/
 
-uint8_t state = ANIM_DISP_OFF;
+uint8_t state =ANIM_DISP_SPRIAL; //ANIM_DISP_OFF;
 uint8_t state_step = 0;
 uint8_t state_init = 0;
 uint8_t state_change_requested = 0;
 uint8_t state_next_state = 0xff;
 uint8_t palette_step = 0;
+uint8_t tx_fail_ct = 0;
+#define MAX_TX_FAIL 10
 uint8_t bt_anim_mode = 1;
 uint8_t bt_anim_cfg = 0;
 
@@ -143,7 +145,7 @@ void loop() {
   }
 
   // State Change logic
-  if (state_change_requested == 1) //&& switchAnimation(state, bt_anim_mode, state_step) == true)
+  if (state_change_requested == 1 && switchAnimation(state, bt_anim_mode, state_step) == true)
   {
     #ifdef EN_SER_PR
     Serial.print("State Change from "); Serial.print(state);

@@ -29,14 +29,4 @@ const uint8_t layout[10][4] = {
   {30,20,10,0}
 };
 
-
-#define LATCH_DELAY_INNER 0
-#define LATCH_DELAY_AFTER 0
-
-#define CLK_DELAY_INNER 0
-#define CLK_DELAY_AFTER 0
-
-
-//#define ANIM_COUNT         	   13 // MAX ANIM COUNT
-
 #endif

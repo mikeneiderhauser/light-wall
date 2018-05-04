@@ -136,7 +136,7 @@ void init_SpaceOdd(int cfg) {
   blankLEDs();
 }
 
-void anim_SpaceOdd(uint8_t step) {  
+void anim_SpaceOdd(uint8_t step) {
   // pick random color per pixel
   // fade from current state to new color (all at once)
   if (step == 0) {
@@ -149,46 +149,51 @@ void anim_SpaceOdd(uint8_t step) {
     }
   } // step=0
 
+  uint8_t leds_changed = 0;
   for (uint8_t i = 0; i < NUM_LEDS; i++)
   {
     // update each pixel (per step)
-
+    // RED PIXEL
     if (final_leds[i].red > leds[i].red){
       leds[i].red += 1;
+      leds_changed = leds_changed & (1<<i);
     }
     else if (final_leds[i].red < leds[i].red){
       leds[i].red -= 1;
-    } 
-    // else values are equal
+      leds_changed = leds_changed & (1<<i);
+    }
 
+    // GREEN PIXEL
     if (final_leds[i].green > leds[i].green){
       leds[i].green += 1;
+      leds_changed = leds_changed & (1<<i);
     }
     else if (final_leds[i].green < leds[i].green){
       leds[i].green -= 1;
-    } 
-    // else values are equal
+      leds_changed = leds_changed & (1<<i);
+    }
 
+    //BLUE PIXEL
     if (final_leds[i].blue > leds[i].blue){
       leds[i].blue += 1;
+      leds_changed = leds_changed & (1<<i);
     }
     else if (final_leds[i].blue < leds[i].blue){
       leds[i].blue -= 1;
-    } 
-    // else values are equal
+      leds_changed = leds_changed & (1<<i);
+    }
+
   }
-  // TODO exit early
-  
+  if (leds_changed == 0)
+  {
+    // no leds have changed.. Animation run done. force step0
+    mode_steps = step + 1;
+    Serial.println("Space Odd resetting to setp 0");
+  }
 }
 
 bool switch_SpaceOdd(uint8_t step) {
-  if (mode_cfg> 10) {
     return true;
-  }
-  else
-  {
-    return false;
-  }
 }
 
 // ****************************************************************************
@@ -246,13 +251,7 @@ bool animAnimation(uint8_t anim, uint8_t step) {
 }
 
 bool switchAnimation(uint8_t anim, uint8_t mode, uint8_t step) {
-  //Serial.println("");
-  //Serial.print("Animation: "); Serial.println(anim);
-  //Serial.print("Mode: "); Serial.println(mode);
-  //Serial.print("Step: "); Serial.println(step);
   bool val = (Animation_Switches[mode])(step);
-  //Serial.print("Ret: "); 
-  //if (val) Serial.println("True"); else Serial.println("False");
 	return val;
 }
 
@@ -273,7 +272,6 @@ void copy_leds_2_disp_leds() {
       pix.blu = map(leds[i].blue, 0, 255, 0, 1023);
       disp_leds[i] = pix;
   }
-  //Serial.println("END");
 }
 
 void write_display() {
