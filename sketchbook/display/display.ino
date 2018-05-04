@@ -51,11 +51,12 @@ lp2_pixel disp_leds[NUM_LEDS];
 
 /********************** Setup *********************/
 
-uint8_t state =ANIM_DISP_SPRIAL; //ANIM_DISP_OFF;
+uint8_t state = ANIM_DISP_OFF;
 uint8_t state_step = 0;
 uint8_t state_init = 0;
 uint8_t state_change_requested = 0;
 uint8_t state_next_state = 0xff;
+uint8_t state_transition_anim_allowed = 0;
 uint8_t palette_step = 0;
 uint8_t tx_fail_ct = 0;
 #define MAX_TX_FAIL 10
@@ -63,7 +64,7 @@ uint8_t bt_anim_mode = 1;
 uint8_t bt_anim_cfg = 0;
 
 unsigned long last_state_change = 0;
-unsigned long state_change_timeout = 21 * 1000; // in seconds
+unsigned long state_change_timeout = 20 * 1000; // in seconds
 
 
 void setup() {
@@ -131,6 +132,7 @@ void setup() {
   // Enable first state transition
   state_init=1;
   state_change_requested = 1;
+  state_transition_anim_allowed = 1;
 }
 
 
@@ -145,7 +147,8 @@ void loop() {
   }
 
   // State Change logic
-  if (state_change_requested == 1 && switchAnimation(state, bt_anim_mode, state_step) == true)
+  switchAnimation(state, bt_anim_mode, state_step);
+  if ((state_change_requested == 1) && (state_transition_anim_allowed == 1))
   {
     #ifdef EN_SER_PR
     Serial.print("State Change from "); Serial.print(state);
@@ -172,6 +175,7 @@ void loop() {
 
     // state var cleanup
     state_change_requested = 0;  // clear state change request
+    state_transition_anim_allowed = 0;
     state_step = 0;  // reset state step
     RestorePalette();  // restore previous color palette - TBD May not be needed
     // save current time

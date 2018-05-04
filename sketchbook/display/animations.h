@@ -3,7 +3,7 @@
 
 void initAnimation(uint8_t anim, uint8_t cfg);
 bool animAnimation(uint8_t anim, uint8_t step);
-bool switchAnimation(uint8_t anim, uint8_t step);
+void switchAnimation(uint8_t anim, uint8_t step);
 void write_display();
 void copy_leds_2_disp_leds();
 

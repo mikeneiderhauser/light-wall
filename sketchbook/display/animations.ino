@@ -46,8 +46,8 @@ void anim_DispOff(uint8_t step) {
 	}
 }
 
-bool switch_DispOff(uint8_t step) {
-	return true;
+void switch_DispOff(uint8_t step) {
+	state_transition_anim_allowed = 1;
 }
 
 
@@ -67,8 +67,8 @@ void anim_PaletteFade(uint8_t step) {
 	}
 }
 
-bool switch_PaletteFade(uint8_t step) {
-	return true;
+void  switch_PaletteFade(uint8_t step) {
+	state_transition_anim_allowed = 1;
 }
 
 // **********************************************
@@ -93,9 +93,9 @@ void anim_SweepDown(uint8_t step) {
 
 bool switch_SweepDown(uint8_t step) {
   if (step == (mode_steps -1)) { 
-    return true;
+    state_transition_anim_allowed = 1;
   } else {
-    return false;
+    state_transition_anim_allowed = 0;
   }
 }
 
@@ -114,13 +114,13 @@ void anim_Sprial(uint8_t step) {
   setPixel(pattern[step], palette_step, 255);  
 }
 
-bool switch_Sprial(uint8_t step) {
-  if (step != (mode_steps-1)) {
-    return false;
+void switch_Sprial(uint8_t step) {
+  if (step == (mode_steps-1)) {
+    state_transition_anim_allowed = 1;
   }
   else
   {
-    return true;
+    state_transition_anim_allowed = 0;
   }
 }
 
@@ -144,7 +144,7 @@ void anim_SpaceOdd(uint8_t step) {
     {
       // pick random color per led
       // rand 0-255 palette_step
-      palette_step = random(0, 255);
+      palette_step = (uint8_t)(random(0, 255));
       setPixelFinal(ir, palette_step, 255);
     }
   } // step=0
@@ -184,6 +184,7 @@ void anim_SpaceOdd(uint8_t step) {
     }
 
   }
+  
   if (leds_changed == 0)
   {
     // no leds have changed.. Animation run done. force step0
@@ -192,8 +193,8 @@ void anim_SpaceOdd(uint8_t step) {
   }
 }
 
-bool switch_SpaceOdd(uint8_t step) {
-    return true;
+void switch_SpaceOdd(uint8_t step) {
+    state_transition_anim_allowed = 1;
 }
 
 // ****************************************************************************
@@ -217,7 +218,7 @@ Animation_Func_t Animation_Funcs[5] = {
   anim_SpaceOdd
 };
 
-typedef bool (*Animation_Switch_t)(uint8_t);
+typedef void (*Animation_Switch_t)(uint8_t);
 Animation_Switch_t Animation_Switches[5] = {
 	switch_DispOff,
 	switch_PaletteFade,
@@ -250,9 +251,8 @@ bool animAnimation(uint8_t anim, uint8_t step) {
 	return (step == (mode_steps - 1));
 }
 
-bool switchAnimation(uint8_t anim, uint8_t mode, uint8_t step) {
-  bool val = (Animation_Switches[mode])(step);
-	return val;
+void switchAnimation(uint8_t anim, uint8_t mode, uint8_t step) {
+  (Animation_Switches[mode])(step);
 }
 
 void copy_leds_2_disp_leds() {
