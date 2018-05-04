@@ -1,11 +1,9 @@
-# led-bowtie-led-wrist
+# light-wall
 
-Uses Arduino 1.6.12
+http://brilldea.net/assets_files/LPII-8/LED%20Painter%20II-8%20Schematic%20Rev0.pdf
+http://brilldea.net/assets_files/LPII-8/LED%20Painter%20II-8-Datasheet-Rev011.pdf
+A6281
+
+Uses Arduino 1.8.5
   FastLED
-  RF24
-  SPIFlash
   Bounce2
-
-Bowtie editor uses:
-	Python3
-	PyQt5
