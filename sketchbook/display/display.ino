@@ -4,7 +4,6 @@
 //http://brilldea.net/assets_files/LPII-8/LED%20Painter%20II-8-Datasheet-Rev011.pdf
 //A6281
 
-//#define DEBUG
 #define EN_SER_PR
 
 #include <SPI.h>
@@ -13,10 +12,6 @@
 #include "animations.h"
 #include "pixel.h"
 #include "data_layout.h"
-
-#ifdef DEBUG
-#include "printf.h"
-#endif
 
 #define OB_RX0         0  // Hardware USART 0 RX Pin
 #define OB_TX0         1  // Hardware USART 0 TX Pin
@@ -44,27 +39,26 @@ unsigned long ts;
 #define COLS 4
 #define NUM_LEDS ROWS*COLS
 
-CRGB leds[NUM_LEDS];
-CRGB final_leds[NUM_LEDS]; // final
-lp2_pixel disp_leds[NUM_LEDS];
-
+CRGB leds[NUM_LEDS];  // led display buffer - 8 bit (40 LEDs -> 3 bytes -> 120bytes)
+CRGB final_leds[NUM_LEDS]; // temp led disply buffer - 8bit (120 bytes)
+lp2_pixel disp_leds[NUM_LEDS]; // led display buffer - 10 bit (160 bytes)
 
 /********************** Setup *********************/
+// 11 bytes
+uint8_t state = ANIM_DISP_OFF; // Current state
+uint8_t state_step = 0;  // Position in current state
+uint8_t state_init = 0;  // Initialize state
+uint8_t state_change_requested = 0;  // next state requested
+uint8_t state_next_state = 0xff;  // next state override
+uint8_t state_transition_anim_allowed = 0;  // allow next state
+uint8_t reset_state_step = 0;  // global to allow state_step to be reset to 0
+uint8_t palette_step = 0;  // step in palette / color blending
+uint8_t bt_anim_mode = 1;  // animation mode (state mode)
+uint8_t bt_anim_cfg = 0;   // animation config (state config)
 
-uint8_t state = ANIM_DISP_OFF;
-uint8_t state_step = 0;
-uint8_t state_init = 0;
-uint8_t state_change_requested = 0;
-uint8_t state_next_state = 0xff;
-uint8_t state_transition_anim_allowed = 0;
-uint8_t palette_step = 0;
-uint8_t tx_fail_ct = 0;
-#define MAX_TX_FAIL 10
-uint8_t bt_anim_mode = 1;
-uint8_t bt_anim_cfg = 0;
-
-unsigned long last_state_change = 0;
-unsigned long state_change_timeout = 20 * 1000; // in seconds
+// 4*2 -> 8 bytes
+unsigned long last_state_change = 0;  // timestamp of last state change
+unsigned long state_change_timeout = 20 * 1000; // in seconds  // Transion period
 
 
 void setup() {
@@ -74,9 +68,6 @@ void setup() {
   // Enable the serial device
   #ifdef EN_SER_PR
   Serial.begin(115200);
-  #ifdef DEBUG 
-    printf_begin();
-  #endif
   #endif
 
   /* Setup shift regs */
@@ -114,7 +105,8 @@ void setup() {
   #endif
   // A6281 cfg Reg
   for (uint8_t i = 0; i < NUM_LEDS; i++) {
-    disp_leds[i].data = 0b01000111111100011111110001111111;
+    // see data_layout.h for details
+    disp_leds[i].data = A6281_CFG_REG;
   }
   write_display();
 
@@ -131,8 +123,8 @@ void setup() {
   last_state_change = millis();
   // Enable first state transition
   state_init=1;
-  state_change_requested = 1;
-  state_transition_anim_allowed = 1;
+  state_change_requested = 1; // allow initial state to change
+  state_transition_anim_allowed = 1;  // allow inital state to change
 }
 
 
@@ -140,98 +132,103 @@ void setup() {
 void loop() {
   // Transition state on timer
   // TODO add disable for node mcu control
-  if (millis() >= (last_state_change + state_change_timeout))
+  if (state_change_requested == 0)
   {
-    Serial.println("Timer State Transition");
-    state_change_requested = 1;
-  }
-
-  // State Change logic
-  switchAnimation(state, bt_anim_mode, state_step);
-  if ((state_change_requested == 1) && (state_transition_anim_allowed == 1))
-  {
-    #ifdef EN_SER_PR
-    Serial.print("State Change from "); Serial.print(state);
-    #endif
-    // no defined next state
-    if (state_next_state == 0xff)
+    if (millis() >= (last_state_change + state_change_timeout))
     {
-      state++;
-      if(state >= ANIM_COUNT)
+      Serial.println("Timer State Transition");
+      state_change_requested = 1;
+    }
+  }
+  else
+  {
+    // State Change logic
+    switchAnimation(state, bt_anim_mode, state_step);
+    if (state_transition_anim_allowed == 1)
+    {
+      #ifdef EN_SER_PR
+      Serial.print("State Change from "); Serial.print(state);
+      #endif
+
+      // no override for next state
+      if (state_next_state == 0xff)
       {
-        state = 1;  // 0 is the off state. we dont want to automatically transition to off
-      }
-    }
-    // defined next state
-    else
-    {
-      // Allow external events (nrf incoming, button presses, etc to set the state)
-      state = state_next_state;
-      state_next_state = 0xff;
-    }
-    #ifdef EN_SER_PR
-    Serial.print(" to "); Serial.println(state);
-    #endif
+        state++;
+        if(state >= ANIM_COUNT)
+        {
+          state = 1;  // 0 is the off state. we dont want to automatically transition to off
+        }
+        else
+        {
+          // handle state override
+          state = state_next_state;
+          state_next_state = 0xff;  // reset override
+        }
+      } // state handling
 
-    // state var cleanup
-    state_change_requested = 0;  // clear state change request
-    state_transition_anim_allowed = 0;
-    state_step = 0;  // reset state step
-    RestorePalette();  // restore previous color palette - TBD May not be needed
-    // save current time
-    last_state_change = millis();
+      #ifdef EN_SER_PR
+      Serial.print(" to "); Serial.println(state);
+      #endif
 
-    state_init = 1;  // we changed states.. perform state init (execution later)
-  }
-  
-  // State machine - select animation mode, cfg, wrist state, and palette
-  // TODO load palette per state
-  if (state == ANIM_DISP_OFF) {
-    bt_anim_mode = 0;
-    bt_anim_cfg = 0;
-  }
-  else if (state == ANIM_DISP_RAINBOW) {
-    bt_anim_mode = 1;
-    bt_anim_cfg = 0;
-    LoadPalette(PALETTE_RAINBOW);
-  }
-  else if (state == ANIM_DISP_FUSCIA) {
-    bt_anim_mode = 1;
-    bt_anim_cfg = 0;
-    LoadPalette(PALETTE_PURPLE);
-  }
-  else if (state == ANIM_DISP_SWEEP_DOWN) {
-    bt_anim_mode = 2;
-    bt_anim_cfg = 0;
-    LoadPalette(PALETTE_RAINBOW);
-  }
-  else if (state == ANIM_DISP_FADE_SWEEP_DOWN) {
-    bt_anim_mode = 2;
-    bt_anim_cfg = 1;
-    LoadPalette(PALETTE_RAINBOW);
-  }
-  else if (state == ANIM_DISP_SPRIAL) {
-    bt_anim_mode = 3;
-    bt_anim_cfg = 0;
-    LoadPalette(PALETTE_RAINBOW);
-    palette_step += 10;
-  }
-  else if (state == ANIM_DISP_SPACE_ODD) {
-    bt_anim_mode = 4;
-    bt_anim_cfg = 0;
-    LoadPalette(PALETTE_RAINBOW);
-  }
-  
-  // perform animation init
-  if(state_init != 0)
-  {
-    state_init = 0;
+      // setup state change
+      last_state_change = millis(); // store state change time
+      state_init = 1;  // we changed states.. perform state init (execution later)
+      state_change_requested = 0;  // clear state change request
+      state_transition_anim_allowed = 0; // clear state change allowed
+      state_step = 0;  // start at the beginning of the next state
+      RestorePalette();  // restore previous color palette - TBD May not be needed
+    } // state_transmission_anim_allowed
+  } // state_change_requested
+
+  // State machine - select animatioin mode (init only), cfg, and palette
+  if (state_init != 0) {
+    if (state == ANIM_DISP_OFF) {
+      bt_anim_mode = 0;
+      bt_anim_cfg = 0;
+      LoadPalette(PALETTE_RAINBOW);
+    }
+    else if (state == ANIM_DISP_RAINBOW) {
+      bt_anim_mode = 1;
+      bt_anim_cfg = 0;
+      LoadPalette(PALETTE_RAINBOW);
+    }
+    else if (state == ANIM_DISP_FUSCIA) {
+      bt_anim_mode = 1;
+      bt_anim_cfg = 0;
+      LoadPalette(PALETTE_PURPLE);
+    }
+    else if (state == ANIM_DISP_SWEEP_DOWN) {
+      bt_anim_mode = 2;
+      bt_anim_cfg = 0;
+      LoadPalette(PALETTE_RAINBOW);
+    }
+    else if (state == ANIM_DISP_FADE_SWEEP_DOWN) {
+      bt_anim_mode = 2;
+      bt_anim_cfg = 1;
+      LoadPalette(PALETTE_RAINBOW);
+    }
+    else if (state == ANIM_DISP_SPRIAL) {
+      bt_anim_mode = 3;
+      bt_anim_cfg = 0;
+      LoadPalette(PALETTE_RAINBOW);
+    }
+    else if (state == ANIM_DISP_SPACE_ODD) {
+      bt_anim_mode = 4;
+      bt_anim_cfg = 0;
+      LoadPalette(PALETTE_RAINBOW);
+    }
+
     initAnimation(bt_anim_mode, bt_anim_cfg);
+    state_init = 0;
   }
 
   // run animation
-  if(animAnimation(bt_anim_mode, state_step) == true) {
+  animAnimation(bt_anim_mode, state_step);
+
+  // handle animation step
+  if(reset_state_step == 1) {
     state_step = 0;
+    reset_state_step = 0;
   }
   else
   {

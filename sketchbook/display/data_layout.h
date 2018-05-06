@@ -2,6 +2,8 @@
 #define __ALW_STRUCTURES__
 
 #include <stdint.h>
+
+#define A6281_CFG_REG 0b01000111111100011111110001111111
 #define PKD __attribute__((__packed__))
 typedef struct PKD{
   union {

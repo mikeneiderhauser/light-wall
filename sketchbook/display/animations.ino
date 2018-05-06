@@ -111,7 +111,8 @@ void init_Sprial(int cfg) {
 
 void anim_Sprial(uint8_t step) {
   const uint8_t pattern[NUM_LEDS] =  {39,29,19,9,8,7,6,5,4,3,2,1,0,10,20,30,31,32,33,34,35,36,37,38,28,18,17,16,15,14,13,12,11,21,22,23,24,25,26,27};
-  setPixel(pattern[step], palette_step, 255);  
+  setPixel(pattern[step], palette_step, 255);
+  palette_step += 10;
 }
 
 void switch_Sprial(uint8_t step) {
@@ -184,11 +185,11 @@ void anim_SpaceOdd(uint8_t step) {
     }
 
   }
-  
+
   if (leds_changed == 0)
   {
-    // no leds have changed.. Animation run done. force step0
-    mode_steps = step + 1;
+    // no leds have changed.. Animation run done. force step reset
+    reset_state_step = 1;
     Serial.println("Space Odd resetting to setp 0");
   }
 }
@@ -235,7 +236,7 @@ void initAnimation(uint8_t anim, uint8_t cfg) {
 	(Animation_Inits[anim])(cfg);
 }
 
-bool animAnimation(uint8_t anim, uint8_t step) {
+void animAnimation(uint8_t anim, uint8_t step) {
 	(Animation_Funcs[anim])(step);
 
 	// Update the LEDs
@@ -248,7 +249,11 @@ bool animAnimation(uint8_t anim, uint8_t step) {
 	if (ms != 0)
 		delay(ms);
 
-	return (step == (mode_steps - 1));
+  if (step == (mode_steps -1))
+  {
+    Serial.println("ANIM - Resetting state steps");
+    reset_state_step = 1;
+  }
 }
 
 void switchAnimation(uint8_t anim, uint8_t mode, uint8_t step) {
