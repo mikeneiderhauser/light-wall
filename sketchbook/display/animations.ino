@@ -19,11 +19,6 @@ uint16_t ms = 0;
 
 #define FPS(x) (1000/x)
 
-// This is a flag for allowing the mode to change
-uint8_t mode_change_allowed = 1;
-// This is a flag for when a button requests a mode change
-uint8_t mode_change_requested = 0;
-
 // Function for blanking the LEDs
 void blankLEDs(void) {
 	for (uint8_t i = 0; i < NUM_LEDS; i++) {
@@ -47,6 +42,7 @@ void anim_DispOff(uint8_t step) {
 }
 
 void switch_DispOff(uint8_t step) {
+  // always allow anim / state change
 	state_transition_anim_allowed = 1;
 }
 
@@ -57,7 +53,7 @@ void switch_DispOff(uint8_t step) {
 void init_PaletteFade(int cfg) {
 	mode_cfg = cfg;
 	mode_steps = 255;
-	ms = 0;
+	ms = 0; // MAX FPS
 }
 
 void anim_PaletteFade(uint8_t step) {
@@ -68,6 +64,7 @@ void anim_PaletteFade(uint8_t step) {
 }
 
 void  switch_PaletteFade(uint8_t step) {
+  // always allow anim / state change
 	state_transition_anim_allowed = 1;
 }
 
@@ -109,10 +106,20 @@ void init_Sprial(int cfg) {
   blankLEDs();
 }
 
+// global so we dont add to stack
+const uint8_t anim_sprial_pattern[NUM_LEDS] =  {39,29,19,9,8,7,6,5,4,3,2,1,0,10,20,30,31,32,33,34,35,36,37,38,28,18,17,16,15,14,13,12,11,21,22,23,24,25,26,27};
 void anim_Sprial(uint8_t step) {
-  const uint8_t pattern[NUM_LEDS] =  {39,29,19,9,8,7,6,5,4,3,2,1,0,10,20,30,31,32,33,34,35,36,37,38,28,18,17,16,15,14,13,12,11,21,22,23,24,25,26,27};
-  setPixel(pattern[step], palette_step, 255);
+  if (step == NUM_LEDS)
+  {
+    // should hopefully never this case
+    Serial.println("Sprial Out of bounds");
+    reset_state_step = 1;
+    return;
+  }
+  
+  setPixel(anim_sprial_pattern[step], palette_step, 255);
   palette_step += 10;
+  
 }
 
 void switch_Sprial(uint8_t step) {
@@ -128,12 +135,10 @@ void switch_Sprial(uint8_t step) {
 // **********************************************
 // * "Space Odd" Animation
 // **********************************************
-//CRGB leds[NUM_LEDS]; // current / transition
-//CRGB final_leds[NUM_LEDS]; // final
 void init_SpaceOdd(int cfg) {
   mode_cfg = cfg;
-  mode_steps = 255;
-  ms = 0;
+  mode_steps = 255; // animation relies on step overrun to reset to 0
+  ms = 0; // Max FPS
   blankLEDs();
 }
 
@@ -202,7 +207,7 @@ void switch_SpaceOdd(uint8_t step) {
 // Animation modes
 // ****************************************************************************
 typedef void (*Animation_Init_t)(uint8_t);
-Animation_Init_t Animation_Inits[5] = {
+Animation_Init_t Animation_Inits[ANIM_MODE_COUNT] = {
 	init_DispOff,
   init_PaletteFade,
   init_SweepDown,
@@ -211,7 +216,7 @@ Animation_Init_t Animation_Inits[5] = {
 };
 
 typedef void (*Animation_Func_t)(uint8_t);
-Animation_Func_t Animation_Funcs[5] = {
+Animation_Func_t Animation_Funcs[ANIM_MODE_COUNT] = {
 	anim_DispOff,
 	anim_PaletteFade,
   anim_SweepDown,
@@ -220,7 +225,7 @@ Animation_Func_t Animation_Funcs[5] = {
 };
 
 typedef void (*Animation_Switch_t)(uint8_t);
-Animation_Switch_t Animation_Switches[5] = {
+Animation_Switch_t Animation_Switches[ANIM_MODE_COUNT] = {
 	switch_DispOff,
 	switch_PaletteFade,
   switch_SweepDown,
@@ -232,12 +237,18 @@ Animation_Switch_t Animation_Switches[5] = {
 // Animation functions
 // ****************************************************************************
 void initAnimation(uint8_t anim, uint8_t cfg) {
-	blankLEDs();
-	(Animation_Inits[anim])(cfg);
+  if (anim < ANIM_MODE_COUNT)
+  {
+	  blankLEDs();
+	  (Animation_Inits[anim])(cfg);
+  }
 }
 
 void animAnimation(uint8_t anim, uint8_t step) {
-	(Animation_Funcs[anim])(step);
+  if (anim < ANIM_MODE_COUNT)
+  {
+	  (Animation_Funcs[anim])(step);
+  }
 
 	// Update the LEDs
   copy_leds_2_disp_leds();
@@ -247,9 +258,12 @@ void animAnimation(uint8_t anim, uint8_t step) {
   if (mode_cfg == 255)
     ms = 0;
 	if (ms != 0)
+  {
+    // todo update to non blocking
 		delay(ms);
+  }
 
-  if (step == (mode_steps -1))
+  if (step == (mode_steps - 1))
   {
     Serial.println("ANIM - Resetting state steps");
     reset_state_step = 1;
@@ -257,7 +271,10 @@ void animAnimation(uint8_t anim, uint8_t step) {
 }
 
 void switchAnimation(uint8_t anim, uint8_t mode, uint8_t step) {
-  (Animation_Switches[mode])(step);
+  if (anim < ANIM_MODE_COUNT)
+  {
+    (Animation_Switches[mode])(step);
+  }
 }
 
 void copy_leds_2_disp_leds() {
@@ -270,7 +287,6 @@ void copy_leds_2_disp_leds() {
       pix.grn = 0;
       pix.red = 0; 
       pix.blu = 0;
-      // todo map leds[i].color (8-bit) to pixel.color (10-bit)
       //map(value, fromLow, fromHigh, toLow, toHigh)
       pix.grn = map(leds[i].green, 0, 255, 0, 1023);
       pix.red = map(leds[i].red, 0, 255, 0, 1023);

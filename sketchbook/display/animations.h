@@ -16,6 +16,13 @@ void copy_leds_2_disp_leds();
 #define ANIM_DISP_SPACE_ODD 6 // mode 4
 #define ANIM_COUNT 7
 
+#define ANIM_MODE_OFF 0
+#define ANIM_MODE_FADE 1
+#define ANIM_MODE_SWEEP 2
+#define ANIM_MODE_SPIRAL 3
+#define ANIM_MODE_SPACE_ODD 4
+#define ANIM_MODE_COUNT 5
+
 const uint8_t layout[10][4] = {
   {39,29,19,9},
   {38,28,18,8},
