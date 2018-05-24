@@ -1,10 +1,13 @@
 #ifndef __ANIMATIONS_T__
 #define __ANIMATIONS_T__
 
+#include "data_layout.h"
+
 void initAnimation(uint8_t anim, uint8_t cfg);
 void animAnimation(uint8_t anim, uint8_t step);
 void switchAnimation(uint8_t anim, uint8_t step);
 void write_display();
+void write_display_reg(lp2_pixel leds[]);
 void copy_leds_2_disp_leds();
 
 #define ANIM_DISP_OFF  0 // mode 0, cfg x
@@ -14,7 +17,7 @@ void copy_leds_2_disp_leds();
 #define ANIM_DISP_FADE_SWEEP_DOWN 4 // mode 2, cfg 1
 #define ANIM_DISP_SPRIAL 5 // mode 3, cfg x
 #define ANIM_DISP_SPACE_ODD 6 // mode 4
-#define ANIM_COUNT 7
+#define ANIM_COUNT 6  // ****SPACE ODD Disabled****
 
 #define ANIM_MODE_OFF 0
 #define ANIM_MODE_FADE 1

@@ -3,6 +3,8 @@
 #include "animations.h"
 #include "data_layout.h"
 
+#define EN_SER_PR
+
 // All animation functions have three functions:
 // 	Initialization - Sets variables
 //		- cfg - Configuration for different modes of the same animation
@@ -194,11 +196,15 @@ void anim_SpaceOdd(uint8_t step) {
   {
     // no leds have changed.. Animation run done. force step reset
     reset_state_step = 1;
+    #ifdef EN_SER_PR
     Serial.println("Space Odd resetting to step 0");
+    #endif
   }
   else
   {
+    #ifdef EN_SER_PR
     Serial.println(leds_changed, BIN);  // should be random
+    #endif
   }
 }
 
@@ -268,7 +274,9 @@ void animAnimation(uint8_t anim, uint8_t step) {
 
   if (step == (mode_steps - 1))
   {
+    #ifdef EN_SER_PR
     Serial.println("ANIM - Resetting state steps");
+    #endif
     reset_state_step = 1;
   }
 }
@@ -287,9 +295,6 @@ void copy_leds_2_disp_leds() {
   pix.adr = 0; // color data addr
   pix.dc = 0;
   for (i = 0; i < NUM_LEDS; i++) {
-      pix.grn = 0;
-      pix.red = 0; 
-      pix.blu = 0;
       //map(value, fromLow, fromHigh, toLow, toHigh)
       pix.grn = map(leds[i].green, 0, 255, 0, 1023);
       pix.red = map(leds[i].red, 0, 255, 0, 1023);
@@ -298,7 +303,19 @@ void copy_leds_2_disp_leds() {
   }
 }
 
+
 void write_display() {
+  // write cfg reg
+  write_display_reg(cmd_leds);
+  // write data reg
+  write_display_reg(disp_leds);
+}
+
+/* increase performance by direct register writing on arduino */
+/* will make less portable in the future, use defines */
+void write_display_reg(lp2_pixel leds[]) {
+/* Assume size of NUM_LEDS */
+
 /*
  * 0-0 [39] 1-2 [29] 2-4 [19] 3-6 [9]
  * 0-1 [38] 1-3 [28] 2-5 [18] 3-7 [8]
@@ -311,14 +328,13 @@ void write_display() {
  * 1-0 [31] 2-2 [21] 3-3 [11] 4-6 [1]
  * 1-1 [30] 2-3 [20] 3-5 [10] 4-7 [0] 
  */
-//lp2_pixel disp_leds[NUM_LEDS];
 
   lp2_pixel pixel;
   uint8_t i, j;
   uint32_t mask = 0x80000000;
   for (j = 0; j < NUM_LEDS; j++) {
     // pixel to write
-    pixel = disp_leds[j];
+    pixel = leds[j];
     for(i = 0; i < 32; i++)
     {
       if((pixel.data)&mask)
@@ -335,7 +351,6 @@ void write_display() {
       // clock in DATA
       digitalWrite(CLK, HIGH);
       digitalWrite(CLK, LOW);
-
 
       // shift the bits in copy
       pixel.data = pixel.data << 1;

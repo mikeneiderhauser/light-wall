@@ -36,6 +36,7 @@
 CRGB leds[NUM_LEDS];  // led display buffer - 8 bit (40 LEDs -> 3 bytes -> 120bytes)
 CRGB final_leds[NUM_LEDS]; // temp led disply buffer - 8bit (120 bytes)
 lp2_pixel disp_leds[NUM_LEDS]; // led display buffer - 10 bit (160 bytes)
+lp2_pixel cmd_leds[NUM_LEDS]; // led display buffer - 10 bit (160 bytes)
 
 /********************** Setup *********************/
 // 11 bytes
@@ -88,27 +89,19 @@ void setup() {
   digitalWrite(YELLOW_OB_LED, LOW);
   digitalWrite(GREEN_OB_LED, LOW);
   
-  // LED Matrix setup
-  // populate w/ cfg data
-  // write out
-  // copy with 0 data
-  // write out
-
   #ifdef EN_SER_PR
     Serial.print("Setup");
   #endif
+
   // A6281 cfg Reg
   for (uint8_t i = 0; i < NUM_LEDS; i++) {
     // see data_layout.h for details
-    disp_leds[i].data = A6281_CFG_REG;
-  }
-  write_display();
-
-  // 0 color value
-  for (uint8_t i = 0; i < NUM_LEDS; i++) {
+    // Set cfg reg (will always be this value)
+    cmd_leds[i].data = A6281_CFG_REG;
+    // Set data reg (software may change)
     disp_leds[i].data = 0;
   }
-  write_display();
+  write_display();  // write both cfg reg and data reg
   
   // Load default palette to memory and init backup palette
   LoadPalette(PALETTE_RAINBOW);
@@ -133,7 +126,9 @@ void loop() {
   {
     if (millis() >= (last_state_change + state_change_timeout))
     {
+      #ifdef EN_SER_PR
       Serial.println("Timer State Transition");
+      #endif
       state_change_requested = 1;
     }
   }
@@ -172,7 +167,9 @@ void loop() {
       // setup state change
       last_state_change = millis(); // store state change time
       state_init = 1;  // we changed states.. perform state init (execution later)
+      #ifdef EN_SER_PR
       Serial.println("Clearing state change request");
+      #endif
       state_change_requested = 0;  // clear state change request
       state_transition_anim_allowed = 0; // clear state change allowed
       state_step = 0;  // start at the beginning of the next state
@@ -180,14 +177,18 @@ void loop() {
     } // state_transmission_anim_allowed
     else
     {
+      #ifdef EN_SER_PR
       Serial.print("State change not allowed --- ");
       Serial.println(state);
+      #endif
     }
   } // state_change_requested
 
   // State machine - select animatioin mode (init only), cfg, and palette
   if (state_init != 0) {
+    #ifdef EN_SER_PR
     Serial.println("Init state");
+    #endif
     if (state == ANIM_DISP_OFF) {
       bt_anim_mode = 0;
       bt_anim_cfg = 0;
@@ -233,7 +234,9 @@ void loop() {
 
   // handle animation step
   if(reset_state_step == 1) {
+    #ifdef EN_SER_PR
     Serial.println("Resetting state step");
+    #endif
     state_step = 0;
     reset_state_step = 0;
   }
