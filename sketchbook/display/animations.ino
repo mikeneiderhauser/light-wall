@@ -162,40 +162,43 @@ void anim_SpaceOdd(uint8_t step) {
     // RED PIXEL
     if (final_leds[i].red > leds[i].red){
       leds[i].red += 1;
-      leds_changed = leds_changed & (1<<i);
+      leds_changed = leds_changed | (1<<i);
     }
     else if (final_leds[i].red < leds[i].red){
       leds[i].red -= 1;
-      leds_changed = leds_changed & (1<<i);
+      leds_changed = leds_changed | (1<<i);
     }
 
     // GREEN PIXEL
     if (final_leds[i].green > leds[i].green){
       leds[i].green += 1;
-      leds_changed = leds_changed & (1<<i);
+      leds_changed = leds_changed | (1<<i);
     }
     else if (final_leds[i].green < leds[i].green){
       leds[i].green -= 1;
-      leds_changed = leds_changed & (1<<i);
+      leds_changed = leds_changed | (1<<i);
     }
 
     //BLUE PIXEL
     if (final_leds[i].blue > leds[i].blue){
       leds[i].blue += 1;
-      leds_changed = leds_changed & (1<<i);
+      leds_changed = leds_changed | (1<<i);
     }
     else if (final_leds[i].blue < leds[i].blue){
       leds[i].blue -= 1;
-      leds_changed = leds_changed & (1<<i);
+      leds_changed = leds_changed | (1<<i);
     }
-
   }
 
   if (leds_changed == 0)
   {
     // no leds have changed.. Animation run done. force step reset
     reset_state_step = 1;
-    Serial.println("Space Odd resetting to setp 0");
+    Serial.println("Space Odd resetting to step 0");
+  }
+  else
+  {
+    Serial.println(leds_changed, BIN);  // should be random
   }
 }
 
@@ -271,7 +274,7 @@ void animAnimation(uint8_t anim, uint8_t step) {
 }
 
 void switchAnimation(uint8_t anim, uint8_t mode, uint8_t step) {
-  if (anim < ANIM_MODE_COUNT)
+  if (mode < ANIM_MODE_COUNT)
   {
     (Animation_Switches[mode])(step);
   }

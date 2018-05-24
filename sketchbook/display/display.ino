@@ -28,12 +28,6 @@
 #define SOFT_MISO     12  // MISO Pin for DS3234
 #define SOFT_SCK      13  // SCK  Pin for DS3234
 
-#define BRIGHTNESS  10
-
-unsigned long top_sw_fts;
-
-unsigned long ts;
-
 // LED Defines
 #define ROWS 10
 #define COLS 4
@@ -58,7 +52,7 @@ uint8_t bt_anim_cfg = 0;   // animation config (state config)
 
 // 4*2 -> 8 bytes
 unsigned long last_state_change = 0;  // timestamp of last state change
-unsigned long state_change_timeout = 20 * 1000; // in seconds  // Transion period
+const unsigned long state_change_timeout = 20 * 1000; // in seconds  // Transion period
 
 
 void setup() {
@@ -125,6 +119,9 @@ void setup() {
   state_init=1;
   state_change_requested = 1; // allow initial state to change
   state_transition_anim_allowed = 1;  // allow inital state to change
+  #ifdef EN_SER_PR
+    Serial.println("... End Setup.");
+  #endif
 }
 
 
@@ -154,17 +151,19 @@ void loop() {
       if (state_next_state == 0xff)
       {
         state++;
-        if(state >= ANIM_COUNT)
-        {
-          state = 1;  // 0 is the off state. we dont want to automatically transition to off
-        }
-        else
-        {
-          // handle state override
-          state = state_next_state;
-          state_next_state = 0xff;  // reset override
-        }
-      } // state handling
+      }
+      else
+      {
+        // handle state override
+        state = state_next_state;
+        state_next_state = 0xff;  // reset override
+      }
+
+      // Handle state out of bounds
+      if (state >= ANIM_COUNT)
+      {
+        state = 1;
+      }
 
       #ifdef EN_SER_PR
       Serial.print(" to "); Serial.println(state);
@@ -173,15 +172,22 @@ void loop() {
       // setup state change
       last_state_change = millis(); // store state change time
       state_init = 1;  // we changed states.. perform state init (execution later)
+      Serial.println("Clearing state change request");
       state_change_requested = 0;  // clear state change request
       state_transition_anim_allowed = 0; // clear state change allowed
       state_step = 0;  // start at the beginning of the next state
       RestorePalette();  // restore previous color palette - TBD May not be needed
     } // state_transmission_anim_allowed
+    else
+    {
+      Serial.print("State change not allowed --- ");
+      Serial.println(state);
+    }
   } // state_change_requested
 
   // State machine - select animatioin mode (init only), cfg, and palette
   if (state_init != 0) {
+    Serial.println("Init state");
     if (state == ANIM_DISP_OFF) {
       bt_anim_mode = 0;
       bt_anim_cfg = 0;
@@ -227,6 +233,7 @@ void loop() {
 
   // handle animation step
   if(reset_state_step == 1) {
+    Serial.println("Resetting state step");
     state_step = 0;
     reset_state_step = 0;
   }
